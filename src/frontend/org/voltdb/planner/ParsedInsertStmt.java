@@ -20,6 +20,7 @@ package org.voltdb.planner;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -46,7 +47,7 @@ public class ParsedInsertStmt extends AbstractParsedStmt {
      * linked hash map so we retain the order in which the user
      * specified the columns.
      */
-    public LinkedHashMap<Column, AbstractExpression> m_columns = new LinkedHashMap<Column, AbstractExpression>();
+    private LinkedHashMap<Column, AbstractExpression> m_columns;
 
     /**
      * The SELECT statement for INSERT INTO ... SELECT.
@@ -87,6 +88,7 @@ public class ParsedInsertStmt extends AbstractParsedStmt {
 
         for (VoltXMLElement node : stmtNode.children) {
             if (node.name.equalsIgnoreCase("columns")) {
+                m_columns = new LinkedHashMap<>(node.children.size());
                 parseTargetColumns(node, table, m_columns);
             }
             else if (node.name.equalsIgnoreCase(SELECT_NODE_NAME)) {
@@ -193,6 +195,8 @@ public class ParsedInsertStmt extends AbstractParsedStmt {
         return expr;
     }
 
+    public Map<Column, AbstractExpression> targetColumns() { return m_columns; }
+
     public StmtSubqueryScan getSubqueryScan() { return m_subquery; }
 
     /**
@@ -258,13 +262,11 @@ public class ParsedInsertStmt extends AbstractParsedStmt {
             updateContentDeterminismMessage(m_subquery.calculateContentDeterminismMessage());
             return getContentDeterminismMessage();
         }
-        if (m_columns != null) {
-            for (AbstractExpression expr : m_columns.values()) {
-                String emsg = expr.getContentDeterminismMessage();
-                if (emsg != null) {
-                    updateContentDeterminismMessage(emsg);
-                    return emsg;
-                }
+        for (AbstractExpression expr : m_columns.values()) {
+            String emsg = expr.getContentDeterminismMessage();
+            if (emsg != null) {
+                updateContentDeterminismMessage(emsg);
+                return emsg;
             }
         }
         return null;
@@ -272,4 +274,5 @@ public class ParsedInsertStmt extends AbstractParsedStmt {
 
     @Override
     public boolean isDML() { return true; }
+
 }
